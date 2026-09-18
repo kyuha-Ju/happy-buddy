@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ground: #e9e4d8;
+  --paper: #f3f0e8;
+  --surface: #ffffff;
+  --ink: #26302a;
+  --muted: #8a9088;
+  --line: #e4e0d5;
+  --forest: #2e4a37;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
