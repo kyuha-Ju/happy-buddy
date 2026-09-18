@@ -91,8 +91,8 @@ export default function MeForm() {
           />
         </div>
         <p className="mt-3 px-1 text-[11.5px] leading-relaxed text-muted">
-          인증 없이 이름·전화번호만으로 가입됩니다. 주민번호는 저장하지 않으며,
-          영수증은 세액공제 가능 기부처가 홈택스 휴대전화번호 방식으로 발급합니다.
+          인증 없이 이름·전화번호만으로 가입됩니다. 기부영수증 발행을 위해서는
+          추후 기부처에서 주민번호를 요청합니다.
         </p>
         <button
           onClick={() => setEditing(true)}
@@ -154,7 +154,7 @@ export default function MeForm() {
           <span>
             <b className="block text-sm font-black text-ink">기부영수증 신청</b>
             <small className="text-[11.5px] text-muted">
-              주민번호는 저장하지 않습니다(발급 시 휴대전화번호 방식)
+              기부영수증 발행을 위해, 추후 기부처에서 주민번호를 요청합니다.
             </small>
           </span>
         </button>
