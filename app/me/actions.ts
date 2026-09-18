@@ -70,6 +70,29 @@ export async function saveMember(input: {
   }
 }
 
+/** 전화번호로 로그인(무인증). 회원이 있으면 device_token 보장 후 반환, 없으면 null. */
+export async function loginByPhone(phone: string): Promise<Member | null> {
+  const p = normalizePhone(phone);
+  if (p.length < 9) return null;
+  try {
+    const db = createAdminClient();
+    const { data: m } = await db
+      .from("member")
+      .select("id, name, phone, receipt_optin, device_token")
+      .eq("phone", p)
+      .maybeSingle();
+    if (!m) return null;
+    let token = (m as Member).device_token;
+    if (!token) {
+      token = randomUUID();
+      await db.from("member").update({ device_token: token }).eq("id", (m as Member).id);
+    }
+    return { ...(m as Member), device_token: token };
+  } catch {
+    return null;
+  }
+}
+
 /** 기기 토큰으로 회원 조회(재방문 자동 인식) */
 export async function getMemberByToken(token: string): Promise<Member | null> {
   if (!token) return null;
