@@ -57,8 +57,17 @@ export default function MyPage() {
 
   return (
     <main className="pt-5">
-      <div className="text-[20px] font-black text-ink">
-        {member.name} 회원님 안녕하세요
+      <div className="flex items-center gap-3">
+        <Link
+          href="/"
+          className="grid h-9 w-9 flex-none place-items-center rounded-full border border-line bg-surface text-lg text-forest"
+          aria-label="홈으로"
+        >
+          🏠
+        </Link>
+        <div className="text-[20px] font-black text-ink">
+          {member.name} 회원님 안녕하세요
+        </div>
       </div>
 
       <div className="mt-5 flex gap-2.5">
@@ -87,6 +96,7 @@ export default function MyPage() {
       </Link>
 
       <div className="mt-8 flex justify-center gap-6 text-sm font-bold text-muted">
+        <Link href="/">홈으로</Link>
         <Link href="/me">내 정보 수정</Link>
         <button onClick={logout}>로그아웃</button>
       </div>
