@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getMemberByToken, type Member } from "@/app/me/actions";
+import { getMyStats, type MyStats } from "@/app/stats/actions";
 
 const TOKEN_KEY = "hb_device_token";
+const won = (n: number) => n.toLocaleString("ko-KR") + "원";
 
 function Tile({ k, v }: { k: string; v: string }) {
   return (
@@ -18,6 +20,7 @@ function Tile({ k, v }: { k: string; v: string }) {
 
 export default function MyPage() {
   const [member, setMember] = useState<Member | null>(null);
+  const [stats, setStats] = useState<MyStats | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -37,6 +40,7 @@ export default function MyPage() {
       }
       setMember(m);
       setLoading(false);
+      getMyStats(m.id).then(setStats);
     });
   }, [router]);
 
@@ -58,8 +62,8 @@ export default function MyPage() {
       </div>
 
       <div className="mt-5 flex gap-2.5">
-        <Tile k="누적 기부액" v="0원" />
-        <Tile k="기부 횟수" v="0회" />
+        <Tile k="누적 기부액" v={stats ? won(stats.totalDonated) : "…"} />
+        <Tile k="기부 횟수" v={stats ? `${stats.count}회` : "…"} />
       </div>
 
       <Link
