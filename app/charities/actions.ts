@@ -252,7 +252,7 @@ export async function getRoundDonateInfo(roundId: string): Promise<RoundDonateIn
 }
 
 export type FundResult =
-  | { ok: true; itemStatus: string; raised: number; target: number }
+  | { ok: true; itemStatus: string; raised: number; target: number; charityId: string; itemId: string }
   | { ok: false; error: string };
 
 /** 라운드 정산액 전체를 하나의 위시리스트 품목에 반영 */
@@ -289,7 +289,7 @@ export async function fundWishlist(input: {
     // 위시리스트 품목
     const { data: item } = await db
       .from("wishlist_item")
-      .select("id, target_cost, raised_amount, groups_count")
+      .select("id, charity_id, target_cost, raised_amount, groups_count")
       .eq("id", input.wishlistItemId)
       .maybeSingle();
     if (!item) return { ok: false, error: "위시리스트 품목을 찾을 수 없어요." };
@@ -343,6 +343,8 @@ export async function fundWishlist(input: {
       itemStatus: completed ? "completed" : "open",
       raised,
       target: item.target_cost,
+      charityId: item.charity_id,
+      itemId: item.id,
     };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "기부 처리 오류" };

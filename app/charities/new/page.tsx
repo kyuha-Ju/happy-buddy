@@ -7,6 +7,11 @@ import { createCharity, type WishItemInput } from "@/app/charities/actions";
 
 const TOKEN_KEY = "hb_device_token";
 
+const formatComma = (s: string) => {
+  const d = s.replace(/[^0-9]/g, "");
+  return d ? parseInt(d, 10).toLocaleString("ko-KR") : "";
+};
+
 type Row = { name: string; cost: string };
 
 export default function NewCharityPage() {
@@ -144,7 +149,7 @@ export default function NewCharityPage() {
             />
             <input
               value={r.cost}
-              onChange={(e) => setRow(i, { cost: e.target.value })}
+              onChange={(e) => setRow(i, { cost: formatComma(e.target.value) })}
               inputMode="numeric"
               placeholder="예상비용"
               className="w-[92px] flex-none rounded-xl border border-line bg-paper px-3 py-2.5 text-right text-[14px] font-bold tabular-nums outline-none focus:border-forest"
