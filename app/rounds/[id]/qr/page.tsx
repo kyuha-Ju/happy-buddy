@@ -96,7 +96,8 @@ export default function RoundQRPage() {
         ))}
       </div>
 
-      <Link href="/" className="mt-5 block w-full rounded-2xl bg-[#E4E9E1] p-4 text-center text-[15px] font-extrabold text-forest">홈으로</Link>
+      <Link href={`/rounds/${round.id}/play`} className="mt-5 block w-full rounded-2xl bg-forest p-4 text-center text-base font-black text-white shadow-lg">경기 시작하기 →</Link>
+      <Link href="/" className="mt-2 block w-full rounded-2xl bg-[#E4E9E1] p-3.5 text-center text-[15px] font-extrabold text-forest">홈으로</Link>
 
       {toast ? (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 rounded-full bg-ink px-4 py-2.5 text-[12.5px] font-bold text-white shadow-lg">{toast}</div>

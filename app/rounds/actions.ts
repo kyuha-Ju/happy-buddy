@@ -207,3 +207,116 @@ export async function joinRound(token: string, memberToken: string): Promise<Joi
     return { ok: false, error: e instanceof Error ? e.message : "입장 실패" };
   }
 }
+
+/* ===== 경기 진행 / 정산 ===== */
+
+export type PlayEvent = { id: string; name: string; amount: number; kind: "joy" | "recover" };
+export type PlayPlayer = { id: string; display_name: string; member_id: string | null };
+export type PlayLog = {
+  id: string;
+  player_id: string;
+  event_id: string;
+  amount: number;
+  kind: string;
+  created_at: string;
+};
+export type PlayData = {
+  id: string;
+  name: string;
+  course: string | null;
+  status: string;
+  players: PlayPlayer[];
+  events: PlayEvent[];
+  logs: PlayLog[];
+};
+
+export async function getRoundPlay(id: string): Promise<PlayData | null> {
+  try {
+    const db = createAdminClient();
+    const { data: round } = await db
+      .from("round")
+      .select("id, name, course, status")
+      .eq("id", id)
+      .maybeSingle();
+    if (!round) return null;
+    const { data: players } = await db
+      .from("round_player")
+      .select("id, display_name, member_id")
+      .eq("round_id", id)
+      .order("joined_via", { ascending: true });
+    const { data: events } = await db
+      .from("round_event")
+      .select("id, name, amount, kind")
+      .eq("round_id", id)
+      .eq("enabled", true)
+      .order("amount", { ascending: false });
+    const { data: logs } = await db
+      .from("donation_log")
+      .select("id, round_player_id, round_event_id, amount, kind, created_at")
+      .eq("round_id", id)
+      .order("created_at", { ascending: true });
+    return {
+      ...(round as any),
+      players: (players || []) as PlayPlayer[],
+      events: (events || []) as PlayEvent[],
+      logs: (logs || []).map((l: any) => ({
+        id: l.id,
+        player_id: l.round_player_id,
+        event_id: l.round_event_id,
+        amount: l.amount,
+        kind: l.kind,
+        created_at: l.created_at,
+      })),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function addDonation(input: {
+  roundId: string;
+  playerId: string;
+  eventId: string;
+  amount: number;
+  kind: "joy" | "recover";
+}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  try {
+    const db = createAdminClient();
+    const { data, error } = await db
+      .from("donation_log")
+      .insert({
+        round_id: input.roundId,
+        round_player_id: input.playerId,
+        round_event_id: input.eventId,
+        amount: input.amount,
+        kind: input.kind,
+        created_by: "operator",
+      })
+      .select("id")
+      .single();
+    if (error || !data) return { ok: false, error: error?.message || "적립 실패" };
+    return { ok: true, id: data.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "적립 실패" };
+  }
+}
+
+export async function deleteDonation(logId: string): Promise<{ ok: boolean }> {
+  try {
+    const db = createAdminClient();
+    await db.from("donation_log").delete().eq("id", logId);
+    return { ok: true };
+  } catch {
+    return { ok: false };
+  }
+}
+
+export async function markSettled(id: string): Promise<{ ok: boolean }> {
+  try {
+    const db = createAdminClient();
+    await db.from("round").update({ status: "settled" }).eq("id", id);
+    return { ok: true };
+  } catch {
+    return { ok: false };
+  }
+}
