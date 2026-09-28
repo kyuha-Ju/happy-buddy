@@ -8,6 +8,7 @@ export type RoundEventInput = {
   amount: number;
   kind: "joy" | "recover";
   enabled: boolean;
+  custom?: boolean;
 };
 
 export type NewRoundInput = {

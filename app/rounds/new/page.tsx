@@ -63,6 +63,12 @@ export default function NewRoundPage() {
   function setEvent(i: number, patch: Partial<RoundEventInput>) {
     setEvents((evs) => evs.map((e, idx) => (idx === i ? { ...e, ...patch } : e)));
   }
+  function addCustomEvent() {
+    setEvents((evs) => [...evs, { name: "", amount: 5000, kind: "joy", enabled: true, custom: true }]);
+  }
+  function removeEvent(i: number) {
+    setEvents((evs) => evs.filter((_, idx) => idx !== i));
+  }
 
   function onSubmit() {
     setError(null);
@@ -150,18 +156,37 @@ export default function NewRoundPage() {
         <div className="mt-1 text-[11.5px] text-muted">이번 라운드에 적용할 조건만 켜세요. 금액도 바꿀 수 있어요.</div>
         {events.map((e, i) => (
           <div key={i} className="flex items-center gap-3 border-t border-line py-3.5 first:border-t-0">
-            <div className="flex-1">
-              <b className="text-base font-black">{e.name}</b>
-              <div className={`mt-0.5 text-[12px] font-bold ${e.kind === "joy" ? "text-joy" : "text-recover"}`}>
-                {e.kind === "joy" ? "기쁨기부" : "회복기부"}
-              </div>
+            <div className="min-w-0 flex-1">
+              {e.custom ? (
+                <input
+                  value={e.name}
+                  onChange={(ev) => setEvent(i, { name: ev.target.value })}
+                  placeholder="룰 이름 (예: 롱기스트)"
+                  className="w-full bg-transparent text-base font-black outline-none placeholder:text-muted/50"
+                />
+              ) : (
+                <b className="text-base font-black">{e.name}</b>
+              )}
+              {e.custom ? (
+                <button
+                  type="button"
+                  onClick={() => setEvent(i, { kind: e.kind === "joy" ? "recover" : "joy" })}
+                  className={`mt-1 rounded-md px-2 py-0.5 text-[11px] font-bold ${e.kind === "joy" ? "bg-[#E7F0E9] text-joy" : "bg-[#F6EADD] text-recover"}`}
+                >
+                  {e.kind === "joy" ? "기쁨기부" : "회복기부"} ⇄
+                </button>
+              ) : (
+                <div className={`mt-0.5 text-[12px] font-bold ${e.kind === "joy" ? "text-joy" : "text-recover"}`}>
+                  {e.kind === "joy" ? "기쁨기부" : "회복기부"}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-1">
               <input
                 type="number"
                 value={e.amount}
                 onChange={(ev) => setEvent(i, { amount: parseInt(ev.target.value || "0", 10) })}
-                className="w-[86px] rounded-lg border border-line bg-[#FAF8F2] px-2 py-1.5 text-right text-sm font-bold outline-none focus:border-forest"
+                className="w-[80px] rounded-lg border border-line bg-[#FAF8F2] px-2 py-1.5 text-right text-sm font-bold outline-none focus:border-forest"
               />
               <span className="text-xs text-muted">원</span>
             </div>
@@ -172,8 +197,18 @@ export default function NewRoundPage() {
             >
               <span className={`absolute top-[3px] h-[23px] w-[23px] rounded-full bg-white shadow transition-all ${e.enabled ? "left-[24px]" : "left-[3px]"}`} />
             </button>
+            {e.custom ? (
+              <button onClick={() => removeEvent(i)} className="flex-none px-1 text-lg text-muted" aria-label="삭제">✕</button>
+            ) : null}
           </div>
         ))}
+        <button
+          type="button"
+          onClick={addCustomEvent}
+          className="mt-3 rounded-xl bg-[#E4E9E1] px-4 py-2.5 text-[13px] font-bold text-forest"
+        >
+          ＋ 룰 직접 추가
+        </button>
       </div>
 
       {error ? (
