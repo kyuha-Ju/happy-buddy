@@ -218,6 +218,7 @@ export type PlayLog = {
   event_id: string;
   amount: number;
   kind: string;
+  hole: number | null;
   created_at: string;
 };
 export type PlayData = {
@@ -252,7 +253,7 @@ export async function getRoundPlay(id: string): Promise<PlayData | null> {
       .order("amount", { ascending: false });
     const { data: logs } = await db
       .from("donation_log")
-      .select("id, round_player_id, round_event_id, amount, kind, created_at")
+      .select("id, round_player_id, round_event_id, amount, kind, hole, created_at")
       .eq("round_id", id)
       .order("created_at", { ascending: true });
     return {
@@ -265,6 +266,7 @@ export async function getRoundPlay(id: string): Promise<PlayData | null> {
         event_id: l.round_event_id,
         amount: l.amount,
         kind: l.kind,
+        hole: l.hole ?? null,
         created_at: l.created_at,
       })),
     };
@@ -279,6 +281,7 @@ export async function addDonation(input: {
   eventId: string;
   amount: number;
   kind: "joy" | "recover";
+  hole?: number | null;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   try {
     const db = createAdminClient();
@@ -290,6 +293,7 @@ export async function addDonation(input: {
         round_event_id: input.eventId,
         amount: input.amount,
         kind: input.kind,
+        hole: input.hole ?? null,
         created_by: "operator",
       })
       .select("id")
