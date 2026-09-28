@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { loginByPhone } from "@/app/me/actions";
@@ -16,7 +16,14 @@ export default function LoginPage() {
   const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [next, setNext] = useState<string | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    try {
+      setNext(new URLSearchParams(window.location.search).get("next"));
+    } catch {}
+  }, []);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,7 +37,7 @@ export default function LoginPage() {
       try {
         if (m.device_token) localStorage.setItem("hb_device_token", m.device_token);
       } catch {}
-      router.push("/mypage");
+      router.push(next || "/mypage");
     });
   }
 

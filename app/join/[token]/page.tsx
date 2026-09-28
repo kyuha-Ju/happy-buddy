@@ -58,8 +58,8 @@ export default function JoinPage() {
           <div className="mt-1 text-[13px] leading-relaxed text-muted">
             이름·전화번호만 넣으면 끝(인증 없음). 가입 후 이 링크로 다시 들어오면 자동으로 참여됩니다.
           </div>
-          <Link href="/me" className="mt-5 block w-full rounded-2xl bg-forest p-4 text-[15px] font-black text-white">회원가입 하기</Link>
-          <Link href="/login" className="mt-2 block w-full rounded-2xl bg-[#E4E9E1] p-3.5 text-sm font-extrabold text-forest">이미 회원이면 로그인</Link>
+          <Link href={`/me?next=/join/${params.token}`} className="mt-5 block w-full rounded-2xl bg-forest p-4 text-[15px] font-black text-white">회원가입 하기</Link>
+          <Link href={`/login?next=/join/${params.token}`} className="mt-2 block w-full rounded-2xl bg-[#E4E9E1] p-3.5 text-sm font-extrabold text-forest">이미 회원이면 로그인</Link>
         </div>
       )}
 

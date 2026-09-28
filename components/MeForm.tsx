@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { saveMember, getMemberByToken, type Member } from "@/app/me/actions";
 
 const TOKEN_KEY = "hb_device_token";
@@ -23,9 +24,14 @@ export default function MeForm() {
   const [receiptOptin, setReceiptOptin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [next, setNext] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   useEffect(() => {
+    try {
+      setNext(new URLSearchParams(window.location.search).get("next"));
+    } catch {}
     let token = "";
     try {
       token = localStorage.getItem(TOKEN_KEY) || "";
@@ -61,6 +67,10 @@ export default function MeForm() {
       try {
         if (res.member.device_token) localStorage.setItem(TOKEN_KEY, res.member.device_token);
       } catch {}
+      if (next) {
+        router.push(next);
+        return;
+      }
       setMember(res.member);
       setEditing(false);
       setSavedFlash(true);
