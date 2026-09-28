@@ -11,14 +11,34 @@ export type RoundEventInput = {
   custom?: boolean;
 };
 
+export type MemberLite = { id: string; name: string; phone: string };
+
 export type NewRoundInput = {
   hostToken: string;
   course: string;
   name: string;
   playDate: string; // "yyyy-mm-dd" | ""
-  participants: string[]; // 비회원 참석자 이름(placeholder)
+  participants: { memberId: string; name: string }[]; // 검색으로 추가한 회원
   events: RoundEventInput[];
 };
+
+/** 참석자 추가용 회원 검색(이름 또는 전화번호 일부) */
+export async function searchMembers(query: string): Promise<MemberLite[]> {
+  const q = (query || "").trim();
+  if (q.length < 1) return [];
+  try {
+    const db = createAdminClient();
+    const digits = q.replace(/[^0-9]/g, "");
+    const builder = db.from("member").select("id, name, phone").limit(8);
+    const { data } =
+      digits.length >= 2
+        ? await builder.ilike("phone", `%${digits}%`)
+        : await builder.ilike("name", `%${q}%`);
+    return (data as MemberLite[]) || [];
+  } catch {
+    return [];
+  }
+}
 
 export type CreateResult =
   | { ok: true; roundId: string; joinCode: string; qrToken: string }
@@ -72,6 +92,7 @@ export async function createRound(input: NewRoundInput): Promise<CreateResult> {
       );
     }
 
+    const seen = new Set<string>([host.id]);
     const players: {
       round_id: string;
       member_id: string | null;
@@ -80,11 +101,11 @@ export async function createRound(input: NewRoundInput): Promise<CreateResult> {
     }[] = [
       { round_id: round.id, member_id: host.id, display_name: host.name, joined_via: "host" },
     ];
-    input.participants
-      .filter((n) => n.trim())
-      .forEach((n) =>
-        players.push({ round_id: round.id, member_id: null, display_name: n.trim(), joined_via: "host" })
-      );
+    input.participants.forEach((p) => {
+      if (!p.memberId || seen.has(p.memberId)) return;
+      seen.add(p.memberId);
+      players.push({ round_id: round.id, member_id: p.memberId, display_name: p.name, joined_via: "host" });
+    });
     await db.from("round_player").insert(players);
 
     return { ok: true, roundId: round.id, joinCode: round.join_code, qrToken: round.qr_token };

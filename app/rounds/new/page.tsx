@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ScreenHeader from "@/components/ScreenHeader";
 import { getMemberByToken } from "@/app/me/actions";
-import { createRound, type RoundEventInput } from "@/app/rounds/actions";
+import { createRound, searchMembers, type RoundEventInput, type MemberLite } from "@/app/rounds/actions";
 
 const TOKEN_KEY = "hb_device_token";
 
@@ -29,8 +29,10 @@ export default function NewRoundPage() {
   const [course, setCourse] = useState("");
   const [name, setName] = useState("정기 라운드");
   const [playDate, setPlayDate] = useState(todayStr());
-  const [participants, setParticipants] = useState<string[]>([]);
-  const [newP, setNewP] = useState("");
+  const [selected, setSelected] = useState<MemberLite[]>([]);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<MemberLite[]>([]);
+  const [searching, startSearch] = useTransition();
   const [events, setEvents] = useState<RoundEventInput[]>(DEFAULT_EVENTS);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -54,11 +56,29 @@ export default function NewRoundPage() {
     });
   }, [router]);
 
-  function addParticipant() {
-    const n = newP.trim();
-    if (!n) return;
-    setParticipants((p) => [...p, n]);
-    setNewP("");
+  function doSearch(q: string) {
+    setQuery(q);
+    if (q.trim().length < 1) {
+      setResults([]);
+      return;
+    }
+    startSearch(async () => {
+      const rows = await searchMembers(q);
+      setResults(rows.filter((r) => !selected.some((s) => s.id === r.id)));
+    });
+  }
+  function addMember(m: MemberLite) {
+    setSelected((s) => (s.some((x) => x.id === m.id) ? s : [...s, m]));
+    setQuery("");
+    setResults([]);
+  }
+  function removeMember(id: string) {
+    setSelected((s) => s.filter((x) => x.id !== id));
+  }
+  function maskPhone(p: string) {
+    const d = (p || "").replace(/[^0-9]/g, "");
+    if (d.length < 4) return p;
+    return `${d.slice(0, 3)}-****-${d.slice(-4)}`;
   }
   function setEvent(i: number, patch: Partial<RoundEventInput>) {
     setEvents((evs) => evs.map((e, idx) => (idx === i ? { ...e, ...patch } : e)));
@@ -86,7 +106,7 @@ export default function NewRoundPage() {
         course,
         name,
         playDate,
-        participants,
+        participants: selected.map((m) => ({ memberId: m.id, name: m.name })),
         events,
       });
       if (!res.ok) {
@@ -122,31 +142,56 @@ export default function NewRoundPage() {
       {/* 참석자 */}
       <div className="mt-4 rounded-2xl border border-line bg-surface p-5 shadow-sm">
         <div className="text-[13px] font-black text-forest">
-          참석자 <span className="font-bold text-muted">· {participants.length + 1}명</span>
+          참석자 <span className="font-bold text-muted">· {selected.length + 1}명</span>
         </div>
         <div className="mt-1 text-[11.5px] text-muted">
-          방장(나) 포함. 비회원은 발급되는 <b>QR·입장코드로 들어올 때 회원가입</b>하면 자동 참여됩니다.
+          방장(나) 포함. 회원을 <b>이름·전화로 검색</b>해 추가하세요. 비회원은 <b>QR·입장코드로 들어올 때 회원가입</b>하면 자동 참여됩니다.
         </div>
-        <div className="mt-3 flex items-center gap-3 border-t border-line py-3">
-          <div className="grid h-9 w-9 place-items-center rounded-full bg-forest text-xs font-black text-white">나</div>
-          <div className="flex-1 text-sm font-extrabold">{hostName} <span className="text-[11px] font-bold text-gold">방장</span></div>
-        </div>
-        {participants.map((p, i) => (
-          <div key={i} className="flex items-center gap-3 border-t border-line py-3">
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-forest-2 text-xs font-black text-white">{p.slice(0, 2)}</div>
-            <div className="flex-1 text-sm font-extrabold">{p}</div>
-            <button onClick={() => setParticipants((arr) => arr.filter((_, idx) => idx !== i))} className="rounded-lg border border-line px-2.5 py-1.5 text-[11px] font-bold text-muted">빼기</button>
-          </div>
-        ))}
-        <div className="mt-3 flex gap-2">
+
+        <div className="mt-3">
           <input
-            value={newP}
-            onChange={(e) => setNewP(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addParticipant(); } }}
-            placeholder="참석자 이름 추가"
-            className="min-w-0 flex-1 rounded-xl border-[1.5px] border-line bg-[#FAF8F2] px-3 py-2.5 text-sm outline-none focus:border-forest"
+            value={query}
+            onChange={(e) => doSearch(e.target.value)}
+            placeholder="회원 이름 또는 전화번호 검색"
+            className="w-full rounded-xl border-[1.5px] border-line bg-[#FAF8F2] px-3 py-2.5 text-sm outline-none focus:border-forest"
           />
-          <button onClick={addParticipant} className="rounded-xl bg-[#E4E9E1] px-4 text-sm font-extrabold text-forest">추가</button>
+          {query.trim() ? (
+            <div className="mt-2 overflow-hidden rounded-xl border border-line bg-surface">
+              {searching ? (
+                <div className="px-3 py-2.5 text-[12px] text-muted">검색 중…</div>
+              ) : results.length === 0 ? (
+                <div className="px-3 py-2.5 text-[12px] text-muted">일치하는 회원이 없어요.</div>
+              ) : (
+                results.map((r) => (
+                  <button key={r.id} type="button" onClick={() => addMember(r)} className="flex w-full items-center gap-3 border-t border-line px-3 py-2.5 text-left first:border-t-0">
+                    <div className="grid h-8 w-8 place-items-center rounded-full bg-forest-2 text-[11px] font-black text-white">{r.name.slice(0, 2)}</div>
+                    <div className="min-w-0 flex-1">
+                      <b className="text-sm font-extrabold">{r.name}</b>
+                      <div className="text-[11px] text-muted">{maskPhone(r.phone)}</div>
+                    </div>
+                    <span className="text-sm font-black text-forest">＋ 추가</span>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-3">
+          <div className="flex items-center gap-3 border-t border-line py-2.5">
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-forest text-xs font-black text-white">나</div>
+            <div className="flex-1 text-sm font-extrabold">{hostName} <span className="text-[11px] font-bold text-gold">방장</span></div>
+          </div>
+          {selected.map((m) => (
+            <div key={m.id} className="flex items-center gap-3 border-t border-line py-2.5">
+              <div className="grid h-9 w-9 place-items-center rounded-full bg-forest-2 text-xs font-black text-white">{m.name.slice(0, 2)}</div>
+              <div className="min-w-0 flex-1">
+                <b className="text-sm font-extrabold">{m.name}</b>
+                <div className="text-[11px] text-muted">{maskPhone(m.phone)}</div>
+              </div>
+              <button onClick={() => removeMember(m.id)} className="rounded-lg border border-line px-2.5 py-1.5 text-[11px] font-bold text-muted">빼기</button>
+            </div>
+          ))}
         </div>
       </div>
 
