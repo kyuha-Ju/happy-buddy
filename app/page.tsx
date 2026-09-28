@@ -47,6 +47,7 @@ export default function Home() {
       </Link>
 
       <div className="mx-1 mt-6 text-xs font-black tracking-wide text-forest">바로가기</div>
+      <Row href="/join" icon="🎫" title="입장 코드로 참여" sub="라운드 코드로 바로 참여" />
       <Row href="/me" icon="🙋" title="회원가입 · 내 정보" sub="이름·전화만 · 인증 없음" />
       <Row href="/charities" icon="🎁" title="기부처" sub="위시리스트를 함께 채워요" />
       <Row href="/nanum" icon="🏆" title="나눔 완료" sub="완주한 위시리스트" />
