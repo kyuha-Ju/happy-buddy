@@ -211,24 +211,13 @@ export type RoundDonateInfo = {
 export async function getRoundDonateInfo(roundId: string): Promise<RoundDonateInfo | null> {
   try {
     const db = createAdminClient();
-    const { data: round } = await db
-      .from("round")
-      .select("id, name")
-      .eq("id", roundId)
-      .maybeSingle();
+    const [{ data: round }, { data: logs }, { data: fundings }] = await Promise.all([
+      db.from("round").select("id, name").eq("id", roundId).maybeSingle(),
+      db.from("donation_log").select("amount").eq("round_id", roundId),
+      db.from("funding").select("id, wishlist_item_id").eq("round_id", roundId).limit(1),
+    ]);
     if (!round) return null;
-
-    const { data: logs } = await db
-      .from("donation_log")
-      .select("amount")
-      .eq("round_id", roundId);
     const total = (logs || []).reduce((s: number, l: any) => s + (l.amount || 0), 0);
-
-    const { data: fundings } = await db
-      .from("funding")
-      .select("id, wishlist_item_id")
-      .eq("round_id", roundId)
-      .limit(1);
     let fundedItemName: string | null = null;
     if (fundings && fundings.length) {
       const { data: it } = await db

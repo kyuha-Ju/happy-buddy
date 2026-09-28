@@ -10,9 +10,11 @@ export type HomeStats = { totalDonated: number; participantCount: number };
 export async function getHomeStats(): Promise<HomeStats> {
   try {
     const db = createAdminClient();
-    const { data: fundings } = await db.from("funding").select("amount");
+    const [{ data: fundings }, { data: fm }] = await Promise.all([
+      db.from("funding").select("amount"),
+      db.from("funding_member").select("member_id"),
+    ]);
     const totalDonated = (fundings || []).reduce((s: number, f: any) => s + (f.amount || 0), 0);
-    const { data: fm } = await db.from("funding_member").select("member_id");
     const participantCount = new Set((fm || []).map((x: any) => x.member_id)).size;
     return { totalDonated, participantCount };
   } catch {

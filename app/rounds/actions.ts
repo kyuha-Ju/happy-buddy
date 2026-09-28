@@ -137,16 +137,14 @@ export async function getRound(arg: { id?: string; token?: string }): Promise<Ro
       ? await base.eq("id", arg.id).maybeSingle()
       : await base.eq("qr_token", arg.token as string).maybeSingle();
     if (!data) return null;
-    const { data: players } = await db
-      .from("round_player")
-      .select("id, display_name, member_id, joined_via")
-      .eq("round_id", data.id)
-      .order("joined_via", { ascending: true });
-    const { data: events } = await db
-      .from("round_event")
-      .select("name, amount, kind")
-      .eq("round_id", data.id)
-      .eq("enabled", true);
+    const [{ data: players }, { data: events }] = await Promise.all([
+      db
+        .from("round_player")
+        .select("id, display_name, member_id, joined_via")
+        .eq("round_id", data.id)
+        .order("joined_via", { ascending: true }),
+      db.from("round_event").select("name, amount, kind").eq("round_id", data.id).eq("enabled", true),
+    ]);
     return { ...(data as any), players: players || [], events: events || [] };
   } catch {
     return null;
@@ -234,28 +232,26 @@ export type PlayData = {
 export async function getRoundPlay(id: string): Promise<PlayData | null> {
   try {
     const db = createAdminClient();
-    const { data: round } = await db
-      .from("round")
-      .select("id, name, course, status")
-      .eq("id", id)
-      .maybeSingle();
+    const [{ data: round }, { data: players }, { data: events }, { data: logs }] = await Promise.all([
+      db.from("round").select("id, name, course, status").eq("id", id).maybeSingle(),
+      db
+        .from("round_player")
+        .select("id, display_name, member_id")
+        .eq("round_id", id)
+        .order("joined_via", { ascending: true }),
+      db
+        .from("round_event")
+        .select("id, name, amount, kind")
+        .eq("round_id", id)
+        .eq("enabled", true)
+        .order("amount", { ascending: false }),
+      db
+        .from("donation_log")
+        .select("id, round_player_id, round_event_id, amount, kind, hole, created_at")
+        .eq("round_id", id)
+        .order("created_at", { ascending: true }),
+    ]);
     if (!round) return null;
-    const { data: players } = await db
-      .from("round_player")
-      .select("id, display_name, member_id")
-      .eq("round_id", id)
-      .order("joined_via", { ascending: true });
-    const { data: events } = await db
-      .from("round_event")
-      .select("id, name, amount, kind")
-      .eq("round_id", id)
-      .eq("enabled", true)
-      .order("amount", { ascending: false });
-    const { data: logs } = await db
-      .from("donation_log")
-      .select("id, round_player_id, round_event_id, amount, kind, hole, created_at")
-      .eq("round_id", id)
-      .order("created_at", { ascending: true });
     return {
       ...(round as any),
       players: (players || []) as PlayPlayer[],
