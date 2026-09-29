@@ -3,27 +3,71 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import ScreenHeader from "@/components/ScreenHeader";
-import { verifyAdmin, getAdminData, adminApprove, adminReject, type AdminData } from "@/app/admin/actions";
+import {
+  verifyAdmin,
+  getAdminData,
+  adminApprove,
+  adminReject,
+  getAdminCharities,
+  getWishlistDonors,
+  type AdminData,
+  type AdminCharity,
+} from "@/app/admin/actions";
 
 const KEY = "hb_admin_key";
 const won = (n: number) => n.toLocaleString("ko-KR") + "원";
 const money = (n: number) => (n >= 10000 ? Math.round(n / 10000).toLocaleString("ko-KR") + "만원" : won(n));
+const pct = (r: number, t: number) => (t > 0 ? Math.min(100, Math.round((r / t) * 100)) : 0);
+
+function downloadCsv(filename: string, rows: (string | number)[][]) {
+  const body = rows
+    .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+    .join("\r\n");
+  const blob = new Blob(["﻿" + body], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function AdminPage() {
   const [pass, setPass] = useState("");
   const [authed, setAuthed] = useState(false);
   const [data, setData] = useState<AdminData | null>(null);
+  const [charities, setCharities] = useState<AdminCharity[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState("");
 
   async function load(pw: string) {
-    const d = await getAdminData(pw);
+    const [d, ch] = await Promise.all([getAdminData(pw), getAdminCharities(pw)]);
     if (d) {
       setData(d);
+      setCharities(ch || []);
       setAuthed(true);
     }
     return d;
+  }
+
+  async function exportDonors(itemId: string, itemName: string) {
+    setBusy("dl-" + itemId);
+    const res = await getWishlistDonors(pass, itemId);
+    setBusy(null);
+    if (!res) return;
+    const rows: (string | number)[][] = [
+      ["기부처", res.charityName],
+      ["위시리스트", res.itemName],
+      ["모금", `${res.raised} / ${res.target}원`],
+      [],
+      ["이름", "전화번호", "기부금액(원)"],
+      ...res.donors.map((d) => [d.name, d.phone, d.amount]),
+      [],
+      ["합계", "", res.donors.reduce((s, d) => s + d.amount, 0)],
+    ];
+    const safe = itemName.replace(/[\\/:*?"<>|]/g, "_");
+    downloadCsv(`기부자명단_${safe}.csv`, rows);
   }
 
   useEffect(() => {
@@ -57,8 +101,9 @@ export default function AdminPage() {
   }
 
   async function refresh() {
-    const d = await getAdminData(pass);
+    const [d, ch] = await Promise.all([getAdminData(pass), getAdminCharities(pass)]);
     if (d) setData(d);
+    if (ch) setCharities(ch);
   }
 
   async function approve(id: string) {
@@ -143,6 +188,58 @@ export default function AdminPage() {
                 <button disabled={busy === c.id} onClick={() => approve(c.id)} className="flex-1 rounded-xl bg-forest py-2.5 text-[13px] font-black text-white disabled:opacity-50">승인</button>
                 <button disabled={busy === c.id} onClick={() => reject(c.id)} className="flex-1 rounded-xl bg-[#F0ECE1] py-2.5 text-[13px] font-black text-[#96603a] disabled:opacity-50">반려</button>
               </div>
+            </div>
+          ))
+        )}
+      </section>
+
+      {/* 입금 관리 진입 */}
+      <Link
+        href="/admin/deposits"
+        className="mt-6 flex w-full items-center justify-between rounded-2xl bg-forest px-5 py-4 text-base font-black text-white shadow-lg"
+      >
+        📅 일자별 · 회원별 입금 관리 <span>›</span>
+      </Link>
+
+      {/* 기부처 진행상황 (라이브) */}
+      <section className="mt-6">
+        <div className="mx-1 mb-2 text-xs font-black tracking-wide text-muted">기부처 진행상황 (실시간)</div>
+        {charities.length === 0 ? (
+          <div className="rounded-xl bg-surface/60 py-6 text-center text-[12.5px] text-muted">승인된 기부처가 없습니다.</div>
+        ) : (
+          charities.map((c) => (
+            <div key={c.id} className="mb-2.5 rounded-2xl border border-line bg-surface p-4 shadow-sm">
+              <b className="text-[14px] font-black text-ink">{c.name}</b>
+              {c.items.map((it) => {
+                const done = it.status === "completed";
+                return (
+                  <div key={it.id} className="mt-3 border-t border-line pt-3 first:mt-2 first:border-t-0 first:pt-0">
+                    <div className="flex items-center gap-2">
+                      <span className="flex-1 text-[13px] font-bold">{it.name}</span>
+                      {done ? (
+                        <span className="text-[11px] font-black text-joy">✓ 완주</span>
+                      ) : (
+                        <span className="text-[11px] font-bold text-muted">{pct(it.raisedAmount, it.targetCost)}%</span>
+                      )}
+                    </div>
+                    <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-[#EAE5D6]">
+                      <div className={`h-full rounded-full ${done ? "bg-joy" : "bg-forest"}`} style={{ width: `${pct(it.raisedAmount, it.targetCost)}%` }} />
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between">
+                      <span className="text-[11.5px] font-bold text-muted">{won(it.raisedAmount)} / {won(it.targetCost)}</span>
+                      {done && (
+                        <button
+                          onClick={() => exportDonors(it.id, it.name)}
+                          disabled={busy === "dl-" + it.id}
+                          className="rounded-lg bg-[#EEF3EC] px-3 py-1.5 text-[11.5px] font-black text-forest disabled:opacity-50"
+                        >
+                          {busy === "dl-" + it.id ? "내보내는 중…" : "⬇ 기부자 명단"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ))
         )}
